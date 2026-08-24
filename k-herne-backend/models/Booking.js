@@ -48,7 +48,7 @@ const bookingSchema = new mongoose.Schema(
 
 // To make queries involving these fields faster...
 // compound index to check how many tickets are already booked...
-// checking follows order event->sectionName->staus
+// checking follows order event->sectionName->status
 // 1 means data are stored in db in increasing order
 bookingSchema.index({
   event: 1,
