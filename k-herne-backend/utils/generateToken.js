@@ -5,4 +5,5 @@ const generateToken = (id) => {
     expiresIn: process.env.JWT_EXPIRES_IN || "30d",
   });
 };
+
 module.exports = generateToken;
