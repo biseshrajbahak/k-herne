@@ -36,6 +36,7 @@ const protect = asyncHandler(async (req, res, next) => {
       error.message ===
         "Authorization denied, user's account has been deactivated"
     ) {
+      res.status(401);
       throw error;
     }
 
