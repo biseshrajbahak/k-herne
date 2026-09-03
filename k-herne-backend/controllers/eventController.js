@@ -97,6 +97,8 @@ const getEventById = asyncHandler(async (req, res, next) => {
   });
 });
 
+// Used by admin routes:
+
 // Create a event
 const createEvent = asyncHandler(async (req, res, next) => {
   const {
