@@ -186,6 +186,12 @@ const cancelBooking = asyncHandler(async (req, res) => {
       throw new Error("Booking already cancelled");
     }
 
+    // Only admin can cancel paid bookings
+    if (booking.paymentStatus === "paid" && req.user.role !== "admin") {
+      res.status(400);
+      throw new Error("Paid bookings cannot be cancelled");
+    }
+
     // Find the event related to this booking
     const event = await Event.findById(booking.event).session(session);
 
