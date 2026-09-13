@@ -3,7 +3,8 @@ const { body } = require("express-validator");
 
 const {
   createBooking,
-  payForBooking,
+  initiatePayment,
+  verifyPayment,
   getMyBookings,
   getBookingById,
   cancelBooking,
@@ -38,9 +39,10 @@ router.post(
   createBooking,
 );
 
+router.post("/:id/initiate-payment", protect, initiatePayment);
+router.get("/khalti/callback", verifyPayment); // public — Khalti redirects here after payment
 router.get("/mine", protect, getMyBookings);
 router.get("/:id", protect, getBookingById);
-router.patch("/:id/pay", protect, payForBooking);
 router.patch("/:id/cancel", protect, cancelBooking);
 
 module.exports = router;

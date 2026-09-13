@@ -3,6 +3,10 @@ const mongoose = require("mongoose");
 const Booking = require("../models/Booking");
 const Event = require("../models/Event");
 const generateBookingCode = require("../utils/generateBookingCode");
+const {
+  initiateKhaltiPayment,
+  verifyKhaltiPayment,
+} = require("../utils/khaltiService");
 
 const createBooking = asyncHandler(async (req, res) => {
   const { eventId, sectionName, quantity } = req.body;
@@ -85,10 +89,13 @@ const createBooking = asyncHandler(async (req, res) => {
   }
 });
 
-// Mock payment for bookings
+// Start a Khalti payment for a pending booking
 
-const payForBooking = asyncHandler(async (req, res) => {
-  const booking = await Booking.findById(req.params.id);
+const initiatePayment = asyncHandler(async (req, res) => {
+  const booking = await Booking.findById(req.params.id).populate(
+    "event",
+    "title",
+  );
 
   if (!booking) {
     res.status(404);
@@ -105,18 +112,67 @@ const payForBooking = asyncHandler(async (req, res) => {
     throw new Error("Can't pay for a cancelled booking");
   }
 
+  if (booking.status !== "pending") {
+    res.status(400);
+    throw new Error("Only pending bookings can be paid");
+  }
+
   if (booking.paymentStatus === "paid") {
     res.status(400);
     throw new Error("Payment already confirmed");
   }
 
-  // Mock payment
-  booking.paymentStatus = "paid";
-  booking.status = "confirmed";
+  const khaltiResponse = await initiateKhaltiPayment({
+    amount: booking.totalPrice,
+    purchaseOrderId: booking.bookingCode,
+    purchaseOrderName: booking.event.title,
+    customerInfo: {
+      name: req.user.name,
+      email: req.user.email,
+      phone: req.user.phone,
+    },
+  });
+
+  booking.pidx = khaltiResponse.pidx;
   await booking.save();
 
   res.json({
     success: true,
+    paymentUrl: khaltiResponse.payment_url,
+  });
+});
+
+// Verify a Khalti payment
+
+const verifyPayment = asyncHandler(async (req, res) => {
+  const { pidx } = req.query;
+
+  if (!pidx) {
+    res.status(400);
+    throw new Error("Missing pidx");
+  }
+
+  const booking = await Booking.findOne({ pidx });
+
+  if (!booking) {
+    res.status(404);
+    throw new Error("Booking not found for this payment");
+  }
+
+  const result = await verifyKhaltiPayment(pidx);
+
+  if (result.status === "Completed") {
+    booking.paymentStatus = "paid";
+    booking.status = "confirmed";
+  } else if (result.status === "User canceled" || result.status === "Expired") {
+    booking.paymentStatus = "failed";
+  }
+
+  await booking.save();
+
+  res.json({
+    success: true,
+    status: result.status,
     data: booking,
   });
 });
@@ -237,7 +293,8 @@ const cancelBooking = asyncHandler(async (req, res) => {
 
 module.exports = {
   createBooking,
-  payForBooking,
+  initiatePayment,
+  verifyPayment,
   getMyBookings,
   getBookingById,
   cancelBooking,

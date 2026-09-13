@@ -42,6 +42,11 @@ const bookingSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    pidx: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     cancelledAt: {
       type: Date,
     },
