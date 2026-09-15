@@ -9,6 +9,7 @@ const eventRoutes = require("./routes/eventRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const bookingRoutes = require("./routes/bookingRoutes.js");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
+const startExpiryJob = require("./utils/expireBookings");
 
 const app = express();
 
@@ -41,6 +42,7 @@ const start = async () => {
       `Server running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`,
     );
   });
+  startExpiryJob();
 };
 
 start();

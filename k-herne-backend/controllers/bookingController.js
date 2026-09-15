@@ -8,6 +8,7 @@ const {
   verifyKhaltiPayment,
 } = require("../utils/khaltiService");
 
+// Creating a booking
 const createBooking = asyncHandler(async (req, res) => {
   const { eventId, sectionName, quantity } = req.body;
 
@@ -69,10 +70,12 @@ const createBooking = asyncHandler(async (req, res) => {
           bookingCode: generateBookingCode(),
           status: "pending",
           paymentStatus: "pending",
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000), // for 30 minutes
         },
       ],
       { session },
     );
+
     // Transaction successful, so permanently apply all the database changes
     await session.commitTransaction();
 
@@ -160,6 +163,29 @@ const verifyPayment = asyncHandler(async (req, res) => {
   }
 
   const result = await verifyKhaltiPayment(pidx);
+
+  // The booking may have expired.
+  // The cron job may have cancelled it.
+  // The payment may be confirmed afterward.
+  // Do not reactivate the booking.
+  // Its seats may already be assigned to another user.
+
+  if (booking.status === "cancelled") {
+    if (result.status === "Completed") {
+      // Payment was received by Khalti, but the booking has already expired.
+      // Record the payment and require admin follow-up for a possible refund.
+      booking.paymentStatus = "paid";
+      await booking.save();
+
+      res.status(409);
+      throw new Error(
+        "Payment was received, but this booking had already expired and the seats were released. Please contact support for a refund.",
+      );
+    }
+
+    res.status(400);
+    throw new Error("This booking has expired.");
+  }
 
   if (result.status === "Completed") {
     booking.paymentStatus = "paid";

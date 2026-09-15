@@ -50,6 +50,9 @@ const bookingSchema = new mongoose.Schema(
     cancelledAt: {
       type: Date,
     },
+    expiresAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
